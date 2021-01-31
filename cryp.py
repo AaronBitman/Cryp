@@ -411,7 +411,7 @@ class Cryp(tk.Tk):
 
     def confirm_word(self, row, column, ciphertext):
         """ Confirm that a given ciphertext word is where it was.
-            (It might not be if the user changed the puzzle.
+            (It might not be if the user changed the puzzle.)
             Return True if the word is there, False otherwise. """
         column_index = column
         for cipherchar in ciphertext:
