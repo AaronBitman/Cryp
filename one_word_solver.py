@@ -16,7 +16,7 @@ class OneWordSolver():
         """ Prints all plaintext translations for a ciphertext word """
         word_pattern = OneWordSolver.get_word_pattern(word)
         try:
-            answers = word_patterns.allPatterns[word_pattern]
+            answers = word_patterns.allPatterns[word_pattern][:]
         except:
             answers = []
         return answers

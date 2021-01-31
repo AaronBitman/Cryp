@@ -12,16 +12,20 @@ class PuzzleLetterField(tk.Entry):
         self.bind('<FocusIn>', self.indicate_focus)
         self.row = row
         self.column = column
+        self.original_value = ""
 
     def enter_char(self, key):
         """ Enter the character the user entered
             at the exclusion of all else. """
         entry = key.keysym
+
         if entry == 'BackSpace':
             self.delete(0, tk.END) # Throw out everything in the field.
+            self.master.translate_across_the_board(self.row, self.column)
             self.master.reverse_tab(self.row, self.column)
         elif entry == 'Delete':
             self.delete(0, tk.END) # Throw out everything in the field.
+            self.master.translate_across_the_board(self.row, self.column)
             self.master.tab(self.row, self.column)
         elif entry == 'Left':
             self.master.reverse_tab(self.row, self.column)

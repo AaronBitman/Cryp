@@ -2,7 +2,7 @@ import tkinter as tk
 from one_word_interface import OneWordWindow
 from puzzle_letter_field import PuzzleLetterField
 from enter_ciphertext_window import EnterCiphertextWindow
-from simple_sub_hacker import SimpleSubHacker
+from word_mapping_group import WordMappingGroup
 from cryp_constants import CrypConstants
 
 class Cryp(tk.Tk):
@@ -119,12 +119,11 @@ class Cryp(tk.Tk):
 
         # Now take a guess at some of the solution by assuming
         # that some of the words are in our dictionary.
-        initial_mapping = SimpleSubHacker.hackSimpleSub(
-            ciphertext_message, like_exclusion)
-        # Loop through the keys.
-        for ciphertext in initial_mapping.keys():
-            if len(initial_mapping[ciphertext]) == 1:
-                self.map(ciphertext, initial_mapping[ciphertext][0])
+        initial_mapping = WordMappingGroup(ciphertext_message, like_exclusion)
+        for ciphertext_letter in CrypConstants.LETTERS:
+            plaintext_letter = initial_mapping.translate(ciphertext_letter)
+            if len(plaintext_letter) == 1:
+                self.map(ciphertext_letter, plaintext_letter)
 
         # Fill in the frequency reports.
         freq_by_alpha, freq_by_freq = self.freq(ciphertext_message)
@@ -290,10 +289,7 @@ class Cryp(tk.Tk):
 
     def solve_word(self):
         """ Open the window to solve one word. """
-        # But first see if we have a "default"
-        # word selected to pass to that window.
-        start_column, cipherword, plainword = self.current_word_location()
-        OneWordWindow(self.row_focus, start_column, cipherword, plainword)
+        OneWordWindow(self)
 
     def current_word_location(self):
         """ Determine the starting and ending columns of the
@@ -301,7 +297,7 @@ class Cryp(tk.Tk):
             ciphertext word and its known plaintext. """
         # If there's no focus then forget it.
         if self.row_focus == None or self.column_focus == None:
-            return None, None, None
+            return None, None, None, None
         
         start_column_index = self.column_focus
         ciphertext_word = self.letter_field\
@@ -321,7 +317,8 @@ class Cryp(tk.Tk):
                 [self.row_focus][end_column_index].config('text')[4]
             plaintext_word = plaintext_word + self.plaintext_representation(
                 self.row_focus, end_column_index)
-        return start_column_index, ciphertext_word, plaintext_word
+        return self.row_focus, start_column_index, \
+                ciphertext_word, plaintext_word
 
     def plaintext_representation(self, row, column):
         """ Give a representation of the plaintext at a given
@@ -368,6 +365,41 @@ class Cryp(tk.Tk):
             index = index + 1
         return True
 
+    def known_plaintext(self, ciphertext_exceptions):
+        """ Get a non-repeating set of all plaintext letters in the puzzle
+            that are solved in the interface, except for those letters
+            whose ciphertext is in the "ciphertext_exceptions" argument. """
+        temp = ""
+        for row_index in range(self.NUMBER_OF_ROWS):
+            for column_index in range(self.CHARACTERS_PER_ROW):
+                temp += self.addition_to_known_plaintext(row_index,
+                        column_index, temp, ciphertext_exceptions)
+        return temp
+
+    def addition_to_known_plaintext(self, row_num,
+            column_num, plaintext_so_far, ciphertext_exceptions):
+        """ Determine what to add to the known plaintext list
+            based on the data at the given row and column. """
+        plaintext_at_this_point = self.solution_field[row_num][column_num].get()
+        if plaintext_at_this_point is None:
+            return ""
+        plaintext_at_this_point = plaintext_at_this_point.strip()
+        if len(plaintext_at_this_point) < 1:
+            return ""
+        plaintext_at_this_point = plaintext_at_this_point[0]
+        if plaintext_at_this_point < 'A' or plaintext_at_this_point > 'Z':
+            return ""
+        if plaintext_at_this_point in plaintext_so_far:
+            return ""
+        ciphertext_at_this_point = self.letter_field\
+                [row_num][column_num].config()['text'][4]
+        # If the plaintext at this point is alphabetic,
+        # presumably the ciphertext is too.
+        if ciphertext_at_this_point in ciphertext_exceptions:
+            return ""
+        return plaintext_at_this_point
+        
+
     def clear(self):
         """ Clear all the editable fields. """
         for row_index in range(self.NUMBER_OF_ROWS):
@@ -376,6 +408,20 @@ class Cryp(tk.Tk):
                        .config()['state']:
                     self.solution_field[row_index][column_index].delete(
                         0, tk.END)
+
+    def confirm_word(self, row, column, ciphertext):
+        """ Confirm that a given ciphertext word is where it was.
+            (It might not be if the user changed the puzzle.
+            Return True if the word is there, False otherwise. """
+        column_index = column
+        for cipherchar in ciphertext:
+            if column_index >= self.CHARACTERS_PER_ROW:
+                return False
+            if self.letter_field[row][column_index].config('text')[4] \
+                    != cipherchar:
+                return False
+            column_index += 1
+        return True
 
 if __name__ == '__main__':
     app = Cryp()

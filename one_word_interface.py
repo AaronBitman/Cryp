@@ -8,14 +8,21 @@ from cryp_constants import CrypConstants
 class OneWordWindow(tk.Toplevel):
     """ The class for a window for solving one word """
 
-    def __init__(self, puzzle_row, puzzle_start_column,
-                 puzzle_cipherword, puzzle_plainword):
+    def __init__(self, master):
         """ Initialize the window. """
         tk.Toplevel.__init__(self)
         # Set the title of the main window.
         self.title('Solve one word')
         # Set the size of the main window.
         self.geometry('450x350')
+
+        # Keep a reference to the master puzzle window.
+        self.master = master
+
+        # See the current word, if there is one.
+        self.puzzle_start_row, self.puzzle_start_column, \
+                puzzle_cipherword, puzzle_plainword = \
+                master.current_word_location()
 
         # Plaintext Widgets
         plain_label = tk.Label(self, text = 'Plain:')
@@ -50,6 +57,9 @@ class OneWordWindow(tk.Toplevel):
         self.like_exclusion = tk.BooleanVar()
         self.like_exclusion_control = tk.Checkbutton(self,
             text='Like-exclusion', variable=self.like_exclusion)
+        self.use_puzzle = tk.BooleanVar()
+        self.use_puzzle_control = tk.Checkbutton(self,
+            text='Use Puzzle', variable=self.use_puzzle)
 
         # Display for solutions
         scrollbar = tk.Scrollbar(self, orient="vertical")
@@ -75,6 +85,7 @@ class OneWordWindow(tk.Toplevel):
         button_solve.grid(row=4, column=2, columnspan=3)
         button_clear.grid(row=4, column=5, columnspan=3)
         self.like_exclusion_control.grid(row=4, column=8, columnspan=6)
+        self.use_puzzle_control.grid(row=4, column=14, columnspan=6)
 
         self.solutions.grid(row=5, column=1,
             columnspan=CrypConstants.MAXIMUM_WORD_SIZE-1, sticky='EW')
@@ -89,10 +100,9 @@ class OneWordWindow(tk.Toplevel):
         # But don't display it yet.
 
         # If we're drawing data from the Cryp window...
-        self.puzzle_row = puzzle_row
-        if puzzle_row != None:
+        self.puzzle_row = master.row_focus
+        if self.puzzle_row != None:
             # ...then remember the puzzle's data for the future...
-            self.puzzle_start_column = puzzle_start_column
             self.puzzle_cipherword = puzzle_cipherword
             
             # ...and prepopulate this interface.
@@ -103,16 +113,10 @@ class OneWordWindow(tk.Toplevel):
             self.fill_in_search_field()
             # But because this is the first time, set the puzzle row again;
             # this is still the initial value for the ciphertext.
-            self.puzzle_row = puzzle_row
+            self.puzzle_row = master.row_focus
 
         # Set the focus.
         self.ciphertext_control[0].focus_set()
-
-        # Install a protocol handler for closing the window.
-        #self.protocol("WM_DELETE_WINDOW", self.on_closing)
-
-    #def on_closing(self):
-    #    self.destroy()
 
     def tab(self, letter_field_type, letter_field_index):
         """ Move the focus to the next space. """
@@ -174,7 +178,6 @@ class OneWordWindow(tk.Toplevel):
             # ...and prohibit the user from
             # selecting a word here for the puzzle.
             self.button_select_word.grid_forget()
-            self.puzzle_row = None
         
     def solve(self):
         """ Provide all known solutions for a word. """
@@ -188,13 +191,27 @@ class OneWordWindow(tk.Toplevel):
         
         # Remove all words that conflict with the known plaintext.
         index = 0
-
         while index < len(solutions):
             if self.conflicts_with_plaintext(
                     solutions[index], self.like_exclusion.get()):
                 del(solutions[index])
             else:
                 index = index + 1
+
+        # If the user checked the "Use Puzzle" option...
+        if self.use_puzzle.get():
+            # ...then exclude any words with a character that matches any
+            # plaintext character in the puzzle, except for those whose
+            # corresponding ciphertext characters appear in THIS window.
+            letters_to_exclude = self.master.known_plaintext\
+                    (self.search_for_value)
+            index = 0
+            while index < len(solutions):
+                if self.have_common_characters(
+                        solutions[index], letters_to_exclude):
+                    del(solutions[index])
+                else:
+                    index = index + 1
 
         for solution in solutions:
             self.solutions.insert(tk.END, solution)
@@ -239,8 +256,24 @@ class OneWordWindow(tk.Toplevel):
 
     def select_word(self, ignore):
         """ Copy the plaintext word to the Cryp window. """
-        # (But first double-check that it's allowed.)
-        if self.puzzle_row != None:
+        # But first double-check that it's allowed.
+        if self.puzzle_row == None:
+            return
+        # Also double-check that the word is still in the puzzle
+        # window where it was when this window was opened.
+        # (It might not be if the user changed the puzzle.)
+        if self.master.confirm_word(self.puzzle_row, self.puzzle_start_column,
+                self.puzzle_cipherword):
             self.master.assign_one_word_plaintext(self.puzzle_row,
                 self.puzzle_start_column, self.puzzle_cipherword,
                 self.solutions.get(self.solutions.curselection()[0]))
+
+    @staticmethod
+    def have_common_characters(string1, string2):
+        """ Determine whether two strings have
+            at least one common character. """
+        for char in string1:
+            if char in string2:
+                return True
+        return False
+
