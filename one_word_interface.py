@@ -262,11 +262,18 @@ class OneWordWindow(tk.Toplevel):
         # Also double-check that the word is still in the puzzle
         # window where it was when this window was opened.
         # (It might not be if the user changed the puzzle.)
-        if self.master.confirm_word(self.puzzle_row, self.puzzle_start_column,
-                self.puzzle_cipherword):
-            self.master.assign_one_word_plaintext(self.puzzle_row,
-                self.puzzle_start_column, self.puzzle_cipherword,
-                self.solutions.get(self.solutions.curselection()[0]))
+        if not self.master.confirm_word(self.puzzle_row,
+                self.puzzle_start_column, self.puzzle_cipherword):
+            return
+        # Also double-check that the selected
+        # plaintext fits the ciphertext in the puzzle.
+        plaintext_word = self.solutions.get(self.solutions.curselection()[0])
+        if plaintext_word not in \
+                OneWordSolver.solve_word(self.puzzle_cipherword):
+            return
+        # After all that validation, we have the word; select it!        
+        self.master.assign_one_word_plaintext(self.puzzle_row,
+            self.puzzle_start_column, self.puzzle_cipherword, plaintext_word)
 
     @staticmethod
     def have_common_characters(string1, string2):

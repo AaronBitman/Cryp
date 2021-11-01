@@ -348,22 +348,8 @@ class Cryp(tk.Tk):
         """ The user has decided (or guessed) that one ciphertext
             word is a certain plaintext word. Fill in the plaintext
             word and translate accordingly across the board. """
-        # But first validate it. That is to say make sure the
-        # ciphertext word is still where it was when the one-word
-        # interface was opened. After all, the user might have
-        # populated the window with a different puzzle by now.
-        if self.ciphertext_is_where_it_was(row, column, cipherword):
-            for index in range(len(cipherword)):
-                self.map(cipherword[index], plainword[index])
-
-    def ciphertext_is_where_it_was(self, row, start_column, cipherword):
-        """ Make sure a ciphertext word is where we expect it to be. """
-        index = start_column
-        for cipherletter in cipherword:
-            if cipherletter != self.letter_field[row][index].config('text')[4]:
-                return False
-            index = index + 1
-        return True
+        for index in range(len(cipherword)):
+            self.map(cipherword[index], plainword[index])
 
     def known_plaintext(self, ciphertext_exceptions):
         """ Get a non-repeating set of all plaintext letters in the puzzle
@@ -413,15 +399,20 @@ class Cryp(tk.Tk):
         """ Confirm that a given ciphertext word is where it was.
             (It might not be if the user changed the puzzle.)
             Return True if the word is there, False otherwise. """
-        column_index = column
-        for cipherchar in ciphertext:
-            if column_index >= self.CHARACTERS_PER_ROW:
-                return False
-            if self.letter_field[row][column_index].config('text')[4] \
-                    != cipherchar:
-                return False
-            column_index += 1
-        return True
+        return (ciphertext == self.word_at(row, column))
+
+    def word_at(self, row, column):
+        """ Determine the word in the puzzle that
+            begins at the given row and column. """
+        temp = ""
+        while column < self.CHARACTERS_PER_ROW:
+            next_char = self.letter_field[row][column].config('text')[4]
+            if next_char.isalpha() or next_char == '\'':
+                temp += next_char
+                column += 1
+            else:
+                return temp
+        return temp
 
 if __name__ == '__main__':
     app = Cryp()
