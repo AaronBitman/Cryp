@@ -6,8 +6,10 @@ class WordMappingGroup():
     """ The class to map (almost) every word in a puzzle
         to its plaintext translation candidates """
 
-    def __init__(self, puzzle, like_exclusion):
+    def __init__(self, puzzle, alphabet_map):
         """ Build the group of word mappings from a puzzle. """
+        
+        self._alphabet_map = alphabet_map
         self._word_dictionary = {}
         # Note that we're temporarily keeping the parentheses
         # to determine whether to include a one-letter word.
@@ -22,16 +24,16 @@ class WordMappingGroup():
             if (len(ciphertextWordWithoutParentheses) > 1 or not inParentheses) \
                     and not ciphertextWordWithoutParentheses \
                     in self._word_dictionary.keys():
-                word_mapping = WordMapping(ciphertextWordWithoutParentheses,
-                                           like_exclusion)
+                word_mapping = WordMapping(ciphertextWordWithoutParentheses)
                 if word_mapping.number_of_candidates() > 0:
                     self._word_dictionary[ciphertextWordWithoutParentheses] = \
                             word_mapping.candidates()
             if ")" in ciphertextWord:
                 inParentheses = False
-
-        # Also, keep an alphabet map.
-        self._alphabet_map = AlphabetMapping(like_exclusion)
+        # In case the alphabet map has been narrowed down (because the
+        # user made some letter choices and hit the Guess button),
+        # check for chances to reduce the words by the alphabet map.
+        self._reduce_words_by_alpha()
 
         # If we can't find a candidate translation for
         # any word, we can't make any guess, so quit.
@@ -134,6 +136,12 @@ class WordMappingGroup():
 
         # Now that the alphabet map is pared down, we can
         # pare down the word translations accordingly.
+        self._reduce_words_by_alpha()
+
+    def _reduce_words_by_alpha(self):
+        """ Based on the premise that the alphabet map is
+            correct, eliminate the candidate translations
+            from every ciphertext word accordingly. """
         # Start by looping through the ciphertext words.
         all_entries = list(self._word_dictionary.keys())
         for entry in all_entries:

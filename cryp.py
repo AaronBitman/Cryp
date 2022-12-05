@@ -3,7 +3,9 @@ from one_word_interface import OneWordWindow
 from puzzle_letter_field import PuzzleLetterField
 from enter_ciphertext_window import EnterCiphertextWindow
 from word_mapping_group import WordMappingGroup
+from alphabet_mapping import AlphabetMapping
 from cryp_constants import CrypConstants
+from tkinter import messagebox
 
 class Cryp(tk.Tk):
     """ The class for a window for solving a whole cryptogram puzzle """
@@ -46,9 +48,15 @@ class Cryp(tk.Tk):
             command=lambda : self.solve_word())
         button_clear = tk.Button(self, text = 'Clear',
             command=lambda : self.clear())
+        button_guess = tk.Button(self, text = 'Guess',
+            command=lambda : self.guess())
+        button_about = tk.Button(self, text = 'About',
+            command=lambda : self.about())
         button_populate.grid(row=grid_row_index, column=1, columnspan=5)
         button_solve_word.grid(row=grid_row_index, column=6, columnspan=5)
         button_clear.grid(row=grid_row_index, column = 11, columnspan=5)
+        button_guess.grid(row=grid_row_index, column = 16, columnspan=5)
+        button_about.grid(row=grid_row_index, column = 21, columnspan=5)
 
         self.freq_by_alpha = tk.Label(self)
         self.freq_by_freq = tk.Label(self)
@@ -75,12 +83,12 @@ class Cryp(tk.Tk):
         # If the user hit Cancel or the "X" button then forget it.
         if ciphertext_window.result == None:
             return
-        ciphertext_message, like_exclusion = ciphertext_window.result
+        self.ciphertext_message, like_exclusion = ciphertext_window.result
 
         row_index = column_index = 0
 
         # Break up the message into words.
-        ciphertext_words = ciphertext_message.split(' ')
+        ciphertext_words = self.ciphertext_message.split(' ')
         for word in ciphertext_words:
             if len(word) > 0:
                 # If the number of chars left in the line
@@ -119,14 +127,11 @@ class Cryp(tk.Tk):
 
         # Now take a guess at some of the solution by assuming
         # that some of the words are in our dictionary.
-        initial_mapping = WordMappingGroup(ciphertext_message, like_exclusion)
-        for ciphertext_letter in CrypConstants.LETTERS:
-            plaintext_letter = initial_mapping.translate(ciphertext_letter)
-            if len(plaintext_letter) == 1:
-                self.map(ciphertext_letter, plaintext_letter)
+        alphabet_map = AlphabetMapping(like_exclusion)
+        self.guess_by_the_map(alphabet_map)
 
         # Fill in the frequency reports.
-        freq_by_alpha, freq_by_freq = self.freq(ciphertext_message)
+        freq_by_alpha, freq_by_freq = self.freq(self.ciphertext_message)
         self.freq_by_alpha.config(text=freq_by_alpha)
         self.freq_by_freq.config(text=freq_by_freq)
 
@@ -134,6 +139,15 @@ class Cryp(tk.Tk):
         # might want that, and it makes it easier to determine
         # focus if the user should want to solve a word.
         self.home(0)
+
+    def guess_by_the_map(self, alphabet_map):
+        """ Given the alphabet map, guess the puzzle's plaintext. """
+        initial_mapping = WordMappingGroup(
+            self.ciphertext_message, alphabet_map)
+        for ciphertext_letter in CrypConstants.LETTERS:
+            plaintext_letter = initial_mapping.translate(ciphertext_letter)
+            if len(plaintext_letter) == 1:
+                self.map(ciphertext_letter, plaintext_letter)
 
     def freq(self, message):
         """ Given a ciphertext message, return a user-friendly string with
@@ -394,6 +408,35 @@ class Cryp(tk.Tk):
                        .config()['state']:
                     self.solution_field[row_index][column_index].delete(
                         0, tk.END)
+
+    def guess(self):
+        """ Take a new guess based on the plaintext filled in. """
+        # First of all, make sure there's a message.
+        try:
+            if self.ciphertext_message is None:
+                return
+        except:
+            return
+        # Also build an alphabet map based on what we've got.
+        alphabet_map = AlphabetMapping(False)
+
+        # We need to scan the puzzle for all letters filled
+        # in and narrow down our alphabet map accordingly.
+        for row_index in range(self.NUMBER_OF_ROWS):
+            for column_index in range(self.CHARACTERS_PER_ROW):
+                plaintext = self.solution_field[row_index][column_index].get()
+                if plaintext.isalpha():
+                    alphabet_map.narrow_down_translations( \
+                        self.letter_field[row_index][column_index].\
+                        config('text')[4], \
+                        plaintext)
+        # Now build a word map based on that alphabet map and
+        # try to populate the puzzle's plaintext accordingly.
+        self.guess_by_the_map(alphabet_map)
+
+    def about(self):
+        """ Open a response window telling the user about Cryp. """
+        messagebox.showinfo("About Cryp", "Cryp 3.0, 2022")
 
     def confirm_word(self, row, column, ciphertext):
         """ Confirm that a given ciphertext word is where it was.
