@@ -5,7 +5,7 @@ Watch a demo of my latest version of this program, version 3, on either of these
 
 https://www.youtube.com/watch?v=4Y0VwHAheG0
 
-https://vimeo.com//777938264
+https://vimeo.com/777938264
 
 You can see a demo of version 2 at either of these URLs:
 
